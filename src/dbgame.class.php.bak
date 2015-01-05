@@ -1,0 +1,217 @@
+<?php 
+include_once '/home/andrewed/public_html/prediction/src/db.class.php';
+
+class dbgame {
+
+	protected $db;
+	
+	public function __construct(){
+		$this->db = database::getInstance()->dbc;
+	}
+	
+	public function loadCompetitions() {
+		
+		$query = $this->db->prepare("select * from competition");
+		$query->execute();
+		$results = $query->fetchAll(PDO::FETCH_OBJ);
+		
+		return $results;
+	}
+	
+	public function loadCompetition($competitionid) {
+		
+		$query = $this->db->prepare("select * from competition where competitionid = :competitionid");
+		$query->execute(array("competitionid" => $competitionid));
+		$comp = $query->fetch(PDO::FETCH_OBJ);
+		
+		return $comp;
+	}
+	
+	public function createCompetition($name, $datasplit, $currentweek, $startdate, $enddate) {
+		
+		$query = $this->db->prepare("insert into competition (`name`,`datasplit`,`currentweek`,`startdate`,`enddate`,`lastupdate`) values (:name, :datasplit, :currentweek, :startdate, :enddate, CURRENT_DATE())");
+		$query->execute(array("name" => $name, "datasplit" => $datasplit, "currentweek" => $currentweek, "startdate" => $startdate, "enddate" => $enddate));
+		$compid = $this->db->lastInsertId();
+		return $compid;
+	}
+	
+	public function setCompetitionUpdated($competitionid, $updatedate) {
+		
+		$query = $this->db->prepare("update competition set lasupdate = :updatedate where competitionid = :competitionid");
+		$query->execute(array("updatedate" => $updatedate, "competitionid" => $competitionid));
+	}
+	
+	public function loadActiveCompetition(){
+		
+		$query = $this->db->prepare("select * from competition where competitionid = (select activecompetition from system limit 1)");
+		$query->execute();
+		$comp = $query->fetch(PDO::FETCH_OBJ);
+		
+		return $comp;
+	}
+	
+	public function loadGamesByCompetition($competitionid, $orderby) {
+		
+		$query = $this->db->prepare("select game.gameid, game.week, game.group, game.team1id, game.team2id, game.team1score, game.team2score, game.competitionid, game.date, t1.name as t1name, t2.name as t2name from game, team as t1, team as t2 where game.competitionid = :competitionid and t1.teamid = game.team1id and t2.teamid = game.team2id order by game.group, game.date");
+		$orderby = "game." . $orderby;
+		$query->execute(array("competitionid" => $competitionid));
+		$results = $query->fetchAll(PDO::FETCH_OBJ);
+		
+		return $results;
+	}
+	
+	public function loadGamesForUpdate($competitionid, $processdate){
+		
+		$query = $this->db->prepare("select game.gameid, game.team1score, game.team2score, game.result from game where game.competitionid = $competitionid and game.result = '' and game.date <= $date and game.date > (select lastupdate from competition where competitionid = :competitionid)");
+		$query->execute(array("competitionid" => $competitionid));
+		$results = $query->fetchAll(PDO::FETCH_OBJ);
+		
+		return $results;			   		
+	}
+	
+	public function loadGamesByCompetitionGroup($competitionid, $group) {
+		
+		$query = $this->db->prepare("select game.gameid, game.week, game.group, game.team1id, game.team2id, game.team1score, game.team2score, game.competitionid, DATE_FORMAT(game.date, '%d/%m/%Y') as date, t1.name as t1name, t2.name as t2name from game, team as t1, team as t2 where game.competitionid = :competitionid and t1.teamid = game.team1id and t2.teamid = game.team2id and game.group = :group");
+		$query->execute(array("competitionid" => $competitionid, "group" => $group));
+		$results = $query->fetchAll(PDO::FETCH_OBJ);
+		
+		return $results;
+	}
+	
+	public function loadGamesByCompetitionWeek($competitionid, $weeknumber) {
+		
+		$query = $this->db->prepare("select game.gameid, game.week, game.group, game.team1id, game.team2id, game.team1score, game.team2score, game.competitionid, DATE_FORMAT(game.date, '%d/%m/%Y') as date, t1.name as t1name, t2.name as t2name from game, team as t1, team as t2 where game.competitionid = :competitionid and t1.teamid = game.team1id and t2.teamid = game.team2id and game.week = :weeknumber order by game.group");
+		$query->execute(array("competitionid" => $competitionid, "weeknumber" => $weeknumber));
+		$results = $query->fetchAll(PDO::FETCH_OBJ);
+		
+		return $results;
+	}
+	
+	public function loadPredsByCompetition($competitionid, $userid) {
+		
+		$query = $this->db->prepare("select prediction.predictionid,prediction.userid,prediction.team1score,prediction.team2score,prediction.result,prediction.multiplier,prediction.points,game.gameid,game.group,game.date,t1.name as t1name, t2.name as t2name from game join team as t1 on game.team1id = t1.teamid join team as t2 on game.team2id = t2.teamid left outer join prediction on game.gameid = prediction.gameid where game.competitionid = :competitionid and prediction.userid = :userid order by game.group, game.date") ;
+	    $query->execute(array("competitionid" => $competitionid, "userid" => $userid));
+		$results = $query->fetchAll(PDO::FETCH_OBJ);
+		
+		return $results;
+	}
+	
+	public function loadUpcomingPredsByCompetition($competitionid, $userid) {
+		
+		$query = $this->db->prepare("select prediction.predictionid,prediction.userid,prediction.team1score,prediction.team2score,prediction.result,prediction.multiplier,prediction.points,game.gameid,game.group,game.date,t1.name as t1name, t2.name as t2name from game join team as t1 on game.team1id = t1.teamid join team as t2 on game.team2id = t2.teamid left outer join prediction on game.gameid = prediction.gameid where game.competitionid = :competitionid and prediction.userid = :userid and game.date >= CURRENT_DATE() order by game.date asc limit 5") ;
+	    $query->execute(array("competitionid" => $competitionid, "userid" => $userid));
+		$results = $query->fetchAll(PDO::FETCH_OBJ);
+		
+		return $results;
+	}
+	
+	public function loadPredsByGame($gameid){
+		
+		$query = $this->db->prepare("select prediction.predictionid,prediction.userid,prediction.team1score,prediction.team2score,prediction.result,prediction.multiplier,prediction.points,prediction.accuracy " .
+			   "from prediction where prediction.game = :gameid");
+	    $query->execute(array("gameid" => $gameid));
+		$results = $query->fetchAll(PDO::FETCH_OBJ);
+		
+		return $results;   
+	}
+		
+	public function createGame($date, $week, $group, $team1id, $team2id, $competitionid){
+		
+		$query = $this->db->prepare("insert into game (`date`,`week`,`group`,`team1id`,`team2id`,`competitionid`) values (str_to_date(':date','%d/%m/%Y'),:week,:group,:team1id,:team2id,:competitionid)");
+		$query->execute(array("date" => $date, "week" => $week, "team1id" => $team1id, "team2id" => $team2id, "competitionid" => $competitionid));
+		$gameid = $this->db->lastInsertId();
+		
+		return $gameid;
+	}
+	
+	public function createPrediction($userid, $gameid, $team1score, $team2score, $multiplier){
+		
+		if(team1score > team2score){
+			$result = 'hw';
+		} else if(team1score < team2score) {
+			$result = 'aw';
+		} else {
+			$result = 'd';
+		}		
+		$query = $this->db->prepare("insert into prediction (`userid`,`gameid`,`team1score`,`team2score`,`result`,`multiplier`) values (:userid,:gameid,:team1score,:team2score,:result,:multiplier)");
+		$query->execute(array("userid" => $userid, "gameid" => $gameid, "team1score" => $team1score, "team2score" => $team2score, "result" => $result, "multiplier" => $multiplier));
+		$predid = $this->db->lastInsertId();
+		return $predid;
+	}
+	
+	public function createPredictions( $userid, $gameIdList, $team1scoreList, $team2scoreList, $starList, $heartList ) {
+			
+		
+		$gameIdArray     = explode(',', $gameIdList);
+		$team1ScoreArray = explode(',', $team1scoreList);
+		$team2ScoreArray = explode(',', $team2scoreList);
+		$starArray       = explode(',', $starList);
+		$heartArray      = explode(',', $heartList);		
+
+		$query = $this->db->prepare("insert into prediction (`userid`,`gameid`,`team1score`,`team2score`,`result`,`multiplier`) values (:userid,:gameid,:team1score,:team2score,:result,:multiplier) on duplicate key update team1score=:team1score,team2score=:team2score,result=:result,multiplier=:multiplier");
+
+		for($i=0, $size=count($gameIdArray); $i<$size; $i++){
+		
+			$multiplier = "";
+		
+			if(($team1ScoreArray[$i] != "") && ($team2ScoreArray[$i] != "")){	
+				$result = "";
+				if($team1ScoreArray[$i] > $team1ScoreArray[$i]){
+					$result = 'hw';
+				} else if($team1ScoreArray[$i] < $team1ScoreArray[$i]) {
+					$result = 'aw';
+				} else {
+					$result = 'd';
+				}	
+								
+				if(in_array($gameIdArray[$i], $starArray)){
+					$multiplier = "Star";
+				}		
+				else if(in_array($gameIdArray[$i], $heartArray)){
+					$multiplier = "Heart";
+				}						
+				else{ 
+					$multiplier = "None";
+				}
+			
+				try {
+					$query->execute(array("userid" => $userid, "gameid" => $gameIdArray[$i], "team1score" => $team1ScoreArray[$i], "team2score" => $team2ScoreArray[$i], "result" => $result, "multiplier" => $multiplier));
+				} catch (PDOException $e){
+					echo $e->getMessage();
+				}	
+			}
+		}		
+	}	
+	
+	public function enterResults($gameIdList, $team1ScoreList, $team2ScoreList){;
+		
+			
+		$gameIdArray     = explode(',', $gameIdList);
+		$team1ScoreArray = explode(',', $team1ScoreList);
+		$team2ScoreArray = explode(',', $team2ScoreList);	
+
+		$query = $this->db->prepare("update game set team1Score=:team1Score, team2Score=:team2Score, result=:result where gameid=:gameid");
+		
+		for($i=0, $size=count($gameIdArray); $i<$size; $i++){
+			$result = "";
+			
+			if(($team1ScoreArray[$i] != "") && ($team2ScoreArray[$i] != "")){				
+				if($team1ScoreArray[$i] > $team1ScoreArray[$i]){
+					$result = 'hw';
+				} else if($team1ScoreArray[$i] < $team1ScoreArray[$i]) {
+					$result = 'aw';
+				} else {
+					$result = 'd';
+				}					
+			
+				$query->execute(array("team1score" => $team1score, "team2score" => $team2score, "result" => $result, "gameid" => $gameid));
+			}
+		}	
+	}
+	
+	public function deleteGame( $gameid ){
+		
+		$query = $this->db->prepare("delete from game where gameid=:gameid");
+		$query->execute(array("gameid" => $gameid));
+	}
+}

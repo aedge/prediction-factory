@@ -1,0 +1,51 @@
+<!DOCTYPE html >
+<?php
+include_once 'dbgame.class.php';
+session_start();
+if(isset($_SESSION) && array_key_exists('predictionuser',$_SESSION)){
+	$user = $_SESSION['predictionuser'];
+} else {
+	
+	if(!strpos($_SERVER['PHP_SELF'],'login')){
+		header('Location: login.php');
+	}
+	$user = null;
+}
+$competitionName = dbgame::loadActiveCompetition()->name;
+
+?>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<title>Prediction Factory</title>
+<link type="text/css" href="/css/jquery-football/css/football/jquery-ui-1.10.0.custom.css" rel="stylesheet" />	
+<link type="text/css" href="/css/football.css" rel="stylesheet" />	
+<script type="text/javascript" src="/js/jquery-1.6.2.min.js"></script>
+<script type="text/javascript" src="/js/jquery-ui-1.8.16.custom.min.js"></script>
+</head>
+<body>
+<div id="divTitleBar">
+	<div class="divPageContent">
+		<h1> The Prediction Factory. </h1> <span>|</span> <?php echo $competitionName; ?> 
+		<?php if($user != null){ ?>
+		<div id="divUserBar"> 
+			<?php echo $user->email ?> <span>|</span> <a href="logout.php">Logout</a>
+		</div>
+		<?php } ?>
+	</div>
+</div>
+<?php if($user != null){ ?>
+<div id="divTabBar">
+	<div class="divPageContent">
+		<ul>
+			<li class="<?php if($page == "main"){echo 'selectedTab ';} else { echo 'tab ';} ?> ui-corner-top"><a href="main.php"><span>Home</span></a></li>
+			<li class="<?php if($page == "leagues"){echo 'selectedTab ';} else { echo 'tab ';} ?> ui-corner-top"><a href="leagues.php">Leagues</a></li>
+			<li class="<?php if($page == "predictions"){echo 'selectedTab ';} else { echo 'tab ';}?> ui-corner-top"><a href="matches.php?action=predictions">Predictions</a></li>
+			<li class="<?php if($page == "results"){echo 'selectedTab ';} else { echo 'tab ';}?> ui-corner-top"><a href="matches.php?action=results">Results</a></li>
+			<?php if($user->accesslevel >= 10){ ?>
+			<li class="<?php if($page == "setup"){echo 'selectedTab ';} else { echo 'tab ';}?> ui-corner-top"><a href="matches.php?action=setup">Setup</a></li>
+			<?php } ?>
+		</ul>
+	</div>
+</div>
+<?php } ?>
