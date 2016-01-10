@@ -1,3 +1,16 @@
+<?php
+include_once '/home/andrewed/public_html/prediction/session.php';
+include_once '/home/andrewed/public_html/prediction/src/dbleague.class.php';
+include_once '/home/andrewed/public_html/prediction/src/dbgame.class.php';
+
+$dbleague = new dbleague();
+$dbgame   = new dbgame();
+
+$leagues = $dbleague->loadUsersLeagues($user->userid);
+$competition = $dbgame->loadActiveCompetition();
+$predictions = $dbgame->loadUpcomingPredsByCompetition($competition->competitionid, $user->userid);
+
+?>
 <!DOCTYPE html> 
 <html> 
 <head> 
@@ -21,19 +34,6 @@
 	
 	<link rel="stylesheet" href="/prediction/css/prediction.css">
 
-<?php
-include_once '/home/andrewed/public_html/prediction/session.php';
-include_once '/home/andrewed/public_html/prediction/src/dbleague.class.php';
-include_once '/home/andrewed/public_html/prediction/src/dbgame.class.php';
-
-$dbleague = new dbleague();
-$dbgame   = new dbgame();
-
-$leagues = $dbleague->loadUsersLeagues($user->userid);
-$competition = $dbgame->loadActiveCompetition();
-$predictions = $dbgame->loadUpcomingPredsByCompetition($competition->competitionid, $user->userid);
-
-?>
 </head>
 <body>
 	<!-- Header Bar -->
